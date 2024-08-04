@@ -12,3 +12,4 @@
 **/.archive
 **/archive_*
 *.gtkw
+**.vscode/

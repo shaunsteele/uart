@@ -15,11 +15,12 @@ function new(string name="uart_test", uvm_component parent=null);
 endfunction
 
 function void end_of_elaboration();
-  `uvm_report_info(get_full_name(), "End of Elaboration", UVM_LOW)
+  `uvm_info(get_full_name(), "End of Elaboration", UVM_LOW)
   print();
 endfunction
 
 task run();
+  #100;
   #1000;
   global_stop_request();
 endtask
