@@ -8,6 +8,21 @@ SIM_DIR := $(REPO_DIR)/sim
 TCL_DIR := $(REPO_DIR)/tcl
 
 SRCS += $(SIM_DIR)/tb_uart_pkg.sv
+
+SRCS += $(ITF_DIR)/axi4_lite_if.sv
+
+SRCS += $(RTL_DIR)/fifo/sp_ram.sv
+SRCS += $(RTL_DIR)/fifo/rd_ptr.sv
+SRCS += $(RTL_DIR)/fifo/wr_ptr.sv
+SRCS += $(RTL_DIR)/fifo/fifo.sv
+SRCS += $(RTL_DIR)/cdc_sync.sv
+SRCS += $(RTL_DIR)/elastic_buffer.sv
+SRCS += $(RTL_DIR)/skid_buffer.sv
+SRCS += $(RTL_DIR)/uart_rx.sv
+SRCS += $(RTL_DIR)/uart_tx.sv
+SRCS += $(RTL_DIR)/uart_controller.sv
+SRCS += $(RTL_DIR)/uart.sv
+
 SRCS += $(SIM_DIR)/tb_uart_top.sv
 
 COMP_ARGS += --incr --relax

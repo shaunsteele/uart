@@ -34,8 +34,12 @@ always_ff @(posedge clk) begin
 end
 
 logic baud_ct_en;
+logic baud_limit_half;
 logic baud_ct_done;
+logic bit_ct_en;
 logic bit_ct_done;
+logic rxd_en;
+logic tdata_en;
 
 always_comb begin
   unique case (RX_IDLE)
@@ -60,7 +64,7 @@ always_comb begin
       rxd_en = 0;
       tdata_en = 0;
 
-      if (!rxs && baud_ct_done) begin
+      if (!i_rxs && baud_ct_done) begin
         next_state = RX_DATA;
       end else begin
         next_state = curr_state;
@@ -74,7 +78,7 @@ always_comb begin
       rxd_en = 1;
       tdata_en = 0;
 
-      if (!rxs && bit_ct_done) begin
+      if (!i_rxs && bit_ct_done) begin
         next_state = RX_DATA;
       end else begin
         next_state = curr_state;
@@ -87,7 +91,7 @@ always_comb begin
       bit_ct_en = 0;
       rxd_en = 0;
 
-      if (rxs && baud_ct_done) begin
+      if (i_rxs && baud_ct_done) begin
         tdata_en = 1;
         next_state = RX_IDLE;
       end else begin

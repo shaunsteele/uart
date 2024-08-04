@@ -70,7 +70,7 @@ modport M_DRV (
 );
 
 modport S_DRV (
-  input aclk, input aresetn
+  input aclk, input aresetn,
   input awvalid, awaddr, awprot, output awready,
   input wvalid, wdata, wstrb, output wready,
   input bready, output bvalid, bresp,
@@ -79,7 +79,7 @@ modport S_DRV (
 );
 
 modport MON (
-  input aclk, aresetn
+  input aclk, aresetn,
   input awvalid, awaddr, awprot, awready,
   input wvalid, wdata, wstrb, wready,
   input bready, bvalid, bresp,

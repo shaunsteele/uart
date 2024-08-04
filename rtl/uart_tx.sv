@@ -70,7 +70,7 @@ always_comb begin
       baud_ct_en = 0;
       bit_ct_en = 0;
 
-      if (i_wen) begin
+      if (i_wvalid) begin
         next_state = TX_START;
       end else begin
         next_state = curr_state;
