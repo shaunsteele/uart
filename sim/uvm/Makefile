@@ -4,7 +4,7 @@ REPO_DIR = /home/shaun/repos/uart
 PKG_DIR := $(REPO_DIR)/packages
 ITF_DIR := $(REPO_DIR)/interfaces
 RTL_DIR := $(REPO_DIR)/rtl
-SIM_DIR := $(REPO_DIR)/sim
+SIM_DIR := $(REPO_DIR)/sim/uvm
 TCL_DIR := $(REPO_DIR)/tcl
 
 SRCS += $(SIM_DIR)/tb_uart_pkg.sv

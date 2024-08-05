@@ -5,7 +5,9 @@
 module uart # (
   parameter int BAUD = 9600,
   parameter int CLKF = 100000000,
-  parameter int DLEN = 8
+  parameter int DLEN = 8,
+  parameter int UART_ADDR = 0,
+  parameter int ENDIAN = "little"
 )(
   input var         clk,
   input var         rstn,
@@ -13,7 +15,7 @@ module uart # (
   output var logic  o_tx,
   input var         i_rx,
 
-  axi_lite_if.S     axi
+  axi4_lite_if.S     axi
 );
 
 // receiver clock sync
@@ -63,8 +65,9 @@ fifo # (
 );
 
 // Controller
-logic             ctrl_txb_wen;
-logic [DLEN-1:0]  ctrl_txb_wdata;
+logic             ctl_txb_wen;
+logic [DLEN-1:0]  ctl_txb_wdata;
+logic             txb_overflow;
 
 uart_controller # (
   .DLEN (DLEN),
@@ -74,7 +77,7 @@ uart_controller # (
   .clk              (clk),
   .rstn             (rstn),
   .i_rxb_overflow   (rxb_overflow),
-  .i_rxb_ren        (ctl_rxb_ren),
+  .o_rxb_ren        (ctl_rxb_ren),
   .i_rxb_rdata      (rxb_rdata),
   .i_rxb_empty      (rxb_empty),
   .i_rxb_underflow  (rxb_underflow),
@@ -90,6 +93,7 @@ logic             txb_full;
 logic             tx_wready;
 logic [DLEN-1:0]  txb_rdata;
 logic             txb_empty;
+logic             txb_underflow;
 fifo # (
   .ALEN (128),
   .DLEN (DLEN)
@@ -115,9 +119,9 @@ uart_tx # (
   .clk      (clk),
   .rstn     (rstn),
   .o_txs    (o_tx),
-  .i_wvalid (tx_wvalid),
+  .i_wvalid (~txb_empty),
   .o_wready (tx_wready),
-  .i_wdata  (txb_ren)
+  .i_wdata  (txb_rdata)
 );
 
 endmodule

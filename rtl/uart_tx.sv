@@ -28,7 +28,7 @@ skid_buffer # (.DLEN (DLEN)) u_SB (
   .i_data   (i_wdata),
   .o_valid  (wvalid),
   .i_ready  (wready),
-  .o_wdata  (wdata)
+  .o_data  (wdata)
 );
 
 logic baud_ct_done;
@@ -139,9 +139,9 @@ end
 // Baud Counter
 localparam int BaudLimit = CLKF / BAUD;
 localparam int BaudLen = $clog2(BaudLimit);
-logic [BaudLen:0] baud_ct = 0;
+logic [BaudLen-1:0] baud_ct = 0;
 always_ff @(posedge clk) begin
-  if (baud_ct_en && baud_ct < BaudLimit) begin
+  if (baud_ct_en && (baud_ct < BaudLimit[BaudLen-1:0])) begin
     baud_ct <= baud_ct + 1;
   end else begin
     baud_ct <= 0;
@@ -149,7 +149,7 @@ always_ff @(posedge clk) begin
 end
 
 always_comb begin
-  baud_ct_done = baud_ct == BaudLimit;
+  baud_ct_done = baud_ct == BaudLimit[BaudLen-1:0];
 end
 
 // Bit Counter
@@ -168,7 +168,7 @@ always_ff @(posedge clk) begin
 end
 
 always_comb begin
-  bit_ct_done = bit_ct == DLEN;
+  bit_ct_done = bit_ct == DLEN[BitLen-1:0];
 end
 
 // Output Register

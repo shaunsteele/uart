@@ -3,8 +3,10 @@
 `default_nettype none
 
 module uart_controller # (
+  parameter int ALEN = 32,
   parameter int DLEN = 8,
-  parameter UART_ADDR = 32'h0,
+  parameter int SLEN = DLEN / 8,
+  parameter int UART_ADDR = 32'h0,
   parameter string ENDIAN = "big"
 )(
   input var                     clk,
@@ -21,7 +23,7 @@ module uart_controller # (
   input var                     i_txb_full,
   input var                     i_txb_overflow,
 
-  axi_lite_if.S   axi
+  axi4_lite_if.S   axi
 );
 
 initial begin
@@ -38,11 +40,14 @@ always_comb begin
 end
 
 // write address channel ready
+logic [axi.SLEN-1:0]  txb_shift;
+logic awready;
 always_comb begin
   awready = ~aw_en | ~|txb_shift | ~i_txb_full;
 end
 
 // write data channel ready
+logic wready;
 always_comb begin
   wready = ~w_en | ~|txb_shift | ~i_txb_full;
 end
@@ -50,7 +55,7 @@ end
 // write address buffer
 logic                 awvalid;
 logic [axi.ALEN-1:0]  awaddr;
-elastic_buffer # (.DLEN(axi.ALEN)) u_AWB (
+elastic_buffer # (.DLEN(ALEN)) u_AWB (
   .clk      (clk),
   .rstn     (rstn),
   .i_valid  (axi.awvalid),
@@ -83,7 +88,7 @@ end
 logic                 wvalid;
 logic [axi.DLEN-1:0]  wdata;
 logic [axi.SLEN-1:0]  wstrb;
-elastic_buffer # (.DLEN(axi.DLEN + axi.SLEN)) u_AWB (
+elastic_buffer # (.DLEN(DLEN + SLEN)) u_WB (
   .clk      (clk),
   .rstn     (rstn),
   .i_valid  (axi.wvalid),
@@ -108,7 +113,6 @@ always_ff @(posedge clk) begin
 end
 
 // txb enable shifter counter
-logic [axi.SLEN-1:0]  txb_shift;
 always_ff @(posedge clk) begin
   if (!rstn) begin
     txb_shift <= 0;
@@ -130,7 +134,7 @@ end
 // txb data shifter
 logic [axi.DLEN-1:0]  txb_data;
 always_ff @(posedge clk) begin
-  if (txb_en) begin
+  if (o_txb_wen) begin
     txb_data <= wdata;
   end else begin
     if (ENDIAN == "big") begin
@@ -161,7 +165,7 @@ always_ff @(posedge clk) begin
     if (tx_err) begin
       tx_err <= axi.bvalid & axi.bready;
     end else begin
-      if (txb_en) begin
+      if (o_txb_wen) begin
         tx_err <= wstrb == 'h0 || wstrb == 'h1 || wstrb == 'h3 ||
           wstrb == 'h7 || wstrb == 'hF || wstrb == 'h1F || wstrb == 'h3F ||
           wstrb == 'h7F || wstrb == 'hFF;
@@ -178,9 +182,9 @@ always_ff @(posedge clk) begin
     axi.bvalid <= 0;
   end else begin
     if (axi.bvalid) begin
-      axi.bvalid <= ~axi.bready | tx_en;
+      axi.bvalid <= ~axi.bready | o_txb_wen;
     end else begin
-      axi.bvalid <= tx_en;
+      axi.bvalid <= o_txb_wen;
     end
   end
 end
@@ -193,7 +197,7 @@ assign axi.bresp = {tx_err, 1'b0}; // OKAY or SLVERR
 logic                 arvalid;
 logic                 arready;
 logic [axi.ALEN-1:0]  araddr;
-elastic_buffer # (.DLEN(axi.ALEN)) u_ARB (
+elastic_buffer # (.DLEN(ALEN)) u_ARB (
   .clk      (clk),
   .rstn     (rstn),
   .i_valid  (axi.arvalid),
@@ -211,7 +215,7 @@ always_comb begin
 end
 
 always_comb begin
-  o_rxb_ren = arvalid & (araddr == UART_ADDR) & ~i_rxb_rempty;
+  o_rxb_ren = arvalid & (araddr == UART_ADDR) & ~i_rxb_empty;
 end
 
 logic rxb_valid;
@@ -262,7 +266,7 @@ always_ff @(posedge clk) begin
     axi.rvalid <= 0;
   end else begin
     if (axi.rvalid) begin
-      axi.rvalid <= ~axi.ready | (ar_en & (araddr == UART_ADDR + 1));
+      axi.rvalid <= ~axi.rready | (ar_en & (araddr == UART_ADDR + 1));
     end
     axi.rvalid <= rxb_rvalid | (ar_en & (araddr == UART_ADDR + 1));
   end
