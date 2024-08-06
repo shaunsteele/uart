@@ -12,6 +12,15 @@ Modules:
   - reads from rx fifo buffer
     - rx fifo buffer written from
 
+uart_tx.sv
+- supports 8 bit data, parity, and any baud depending on clock speed
+- functions:
+  - baud counter
+  - bit counter
+  - shift register
+  - parity calculator
+  - state machine
+
 controller
 - write address channel
   - aw_en from valid awvalid and txb not full and correct awaddr

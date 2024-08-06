@@ -3,9 +3,11 @@
 `default_nettype none
 
 module uart_tx # (
-  parameter int BAUD = 9600,
+  parameter int BAUD = 921600,
   parameter int CLKF = 100000000,
-  parameter int DLEN = 8
+  parameter int DLEN = 8,
+  parameter int PARITY = 0,
+  parameter string ENDIAN = "big"
 )(
   input var                     clk,
   input var                     rstn,
@@ -17,56 +19,114 @@ module uart_tx # (
   input var         [DLEN-1:0]  i_wdata
 );
 
-logic             wvalid;
-logic             wready;
-logic [DLEN-1:0]  wdata;
-skid_buffer # (.DLEN (DLEN)) u_SB (
-  .clk  (clk),
-  .rstn (rstn),
-  .i_valid  (i_wvalid),
-  .o_ready  (o_wready),
-  .i_data   (i_wdata),
-  .o_valid  (wvalid),
-  .i_ready  (wready),
-  .o_data  (wdata)
-);
 
-logic baud_ct_done;
-logic [DLEN-1:0]  txd;
+/* Baud Counter */
+localparam int BaudLimit = (CLKF / BAUD) - 1;
+localparam int BaudLen = $clog2(BaudLimit);
+
+logic               baud_ct_en;
+logic [BaudLen-1:0] baud_ct;
+logic               baud_ct_done;
+
+always_comb begin
+  baud_ct_done = baud_ct == BaudLimit;
+end
+
 always_ff @(posedge clk) begin
-  if (wvalid) begin
-    txd <= wdata;
-  end else if (baud_ct_done) begin
-    txd <= txd >> 1;
+  if (!rstn) begin
+    baud_ct <= 0;
+  end if (baud_ct_en && !baud_ct_done) begin
+    baud_ct <= baud_ct + 1;
   end else begin
-    txd <= txd;
+    baud_ct <= 0;
   end
 end
 
-typedef enum logic [2:0] {
-  TX_READY,
-  TX_START,
-  TX_DATA,
-  TX_STOP
+
+/* Bit Counter */
+localparam int BitLimit = DLEN - 1;
+localparam int BitLen = $clog2(BitLimit);
+
+logic               bit_ct_en;
+logic [BitLen-1:0]  bit_ct;
+logic               bit_ct_done;
+
+always_ff @(posedge clk) begin
+  if (!rstn) begin
+    bit_ct <= 0;
+  end else begin
+    if (bit_ct_en) begin
+      if (baud_ct_done) begin
+        bit_ct <= bit_ct + 1;
+      end else begin
+        bit_ct <= bit_ct;
+      end
+    end else begin
+      bit_ct <= 0;
+    end
+  end
+end
+
+always_comb begin
+  bit_ct_done = bit_ct == BitLimit;
+end
+
+
+/* Transmitter Shift Register */
+logic [DLEN-1:0]  txd;
+
+always_ff @(posedge clk) begin
+  if (i_wvalid && o_wready) begin
+    txd <= i_wdata;
+  end else begin
+    if (bit_ct_en && baud_ct_done) begin
+      if (ENDIAN == "big") begin
+        txd <= txd << 1;
+      end else begin
+        txd <= txd >> 1;
+      end
+    end else begin
+      txd <= txd;
+    end
+  end
+end
+
+
+/* Parity Calculator */
+logic [DLEN-1:0]  parity_buf;
+logic             parity_bit;
+
+always_comb begin
+  parity_bit = ^parity_buf;
+end
+
+always_ff @(posedge clk) begin
+  if (i_wvalid && o_wready) begin
+    parity_buf <= i_wdata;
+  end else begin
+    parity_buf <= parity_buf;
+  end
+end
+
+
+/* State Machine */
+// States
+typedef enum logic [4:0] {
+  TX_READY  = 5'b00001,
+  TX_START  = 5'b00010,
+  TX_DATA   = 5'b00100,
+  TX_STOP   = 5'b01000,
+  TX_PARITY = 5'b10000
 } state_e;
 state_e curr_state;
 state_e next_state;
-
-// outputs
-logic ready;
-logic txs;
-logic baud_ct_en;
-logic bit_ct_en;
-
-// inputs
-logic bit_ct_done;
 
 // Next State Logic
 always_comb begin
   unique case (curr_state)
     TX_READY: begin
-      wready = 1;
-      txs = 1;
+      o_wready = 1;
+      o_txs = 1;
       baud_ct_en = 0;
       bit_ct_en = 0;
 
@@ -78,10 +138,10 @@ always_comb begin
     end
 
     TX_START: begin
-      wready = 0;
-      txs = 0;
+      o_wready = 0;
       baud_ct_en = 1;
       bit_ct_en = 0;
+      o_txs = 0;
 
       if (baud_ct_done) begin
         next_state = TX_DATA;
@@ -91,12 +151,33 @@ always_comb begin
     end
 
     TX_DATA: begin
-      wready = 0;
-      txs = txd[0];
+      o_wready = 0;
       baud_ct_en = 1;
       bit_ct_en = 1;
+      if (ENDIAN == "big") begin
+        o_txs = txd[DLEN-1];
+      end else begin
+        o_txs = txd[0];
+      end
 
       if (baud_ct_done && bit_ct_done) begin
+        if (PARITY) begin
+          next_state = TX_PARITY;
+        end else begin
+          next_state = TX_STOP;
+        end
+      end else begin
+        next_state = curr_state;
+      end
+    end
+
+    TX_PARITY: begin
+      o_wready = 0;
+      baud_ct_en = 1;
+      bit_ct_en = 0;
+      o_txs = parity_bit;
+
+      if (baud_ct_done) begin
         next_state = TX_STOP;
       end else begin
         next_state = curr_state;
@@ -104,10 +185,10 @@ always_comb begin
     end
 
     TX_STOP: begin
-      wready = 0;
-      txs = 1;
+      o_wready = 0;
       baud_ct_en = 1;
       bit_ct_en = 0;
+      o_txs = 1;
 
       if (baud_ct_done) begin
         next_state = TX_READY;
@@ -117,12 +198,11 @@ always_comb begin
     end
 
     default: begin
-      wready = 0;
-      txs = 1;
+      o_wready = 0;
       baud_ct_en = 0;
       bit_ct_en = 0;
+      o_txs = 1;
       next_state = TX_READY;
-      $error("Illegal State: 0b%0b", curr_state);
     end
   endcase
 end
@@ -136,44 +216,5 @@ always_ff @(posedge clk) begin
   end
 end
 
-// Baud Counter
-localparam int BaudLimit = CLKF / BAUD;
-localparam int BaudLen = $clog2(BaudLimit);
-logic [BaudLen-1:0] baud_ct = 0;
-always_ff @(posedge clk) begin
-  if (baud_ct_en && (baud_ct < BaudLimit[BaudLen-1:0])) begin
-    baud_ct <= baud_ct + 1;
-  end else begin
-    baud_ct <= 0;
-  end
-end
-
-always_comb begin
-  baud_ct_done = baud_ct == BaudLimit[BaudLen-1:0];
-end
-
-// Bit Counter
-localparam int BitLen = $clog2(DLEN);
-logic [BitLen-1:0]  bit_ct = 0;
-always_ff @(posedge clk) begin
-  if (bit_ct_en) begin
-    if (baud_ct_done) begin
-      bit_ct <= bit_ct + 1;
-    end else begin
-      bit_ct <= bit_ct;
-    end
-  end else begin
-    bit_ct <= 0;
-  end
-end
-
-always_comb begin
-  bit_ct_done = bit_ct == DLEN[BitLen-1:0];
-end
-
-// Output Register
-always_ff @(posedge clk) begin
-  o_txs <= txs;
-end
 
 endmodule
