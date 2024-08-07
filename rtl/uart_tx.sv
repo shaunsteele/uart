@@ -170,6 +170,7 @@ always_comb begin
     end
 
     default: begin
+      if (rstn) $error("Illegal State: 0x%0h", curr_state);
       o_wready = 0;
       baud_ct_en = 0;
       bit_ct_en = 0;
