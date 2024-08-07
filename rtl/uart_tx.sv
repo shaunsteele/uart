@@ -6,8 +6,7 @@ module uart_tx # (
   parameter int BAUD = 921600,
   parameter int CLKF = 100000000,
   parameter int DLEN = 8,
-  parameter int PARITY = 0,
-  parameter string ENDIAN = "big"
+  parameter int PARITY = 0
 )(
   input var                     clk,
   input var                     rstn,
@@ -80,11 +79,7 @@ always_ff @(posedge clk) begin
     txd <= i_wdata;
   end else begin
     if (bit_ct_en && baud_ct_done) begin
-      if (ENDIAN == "big") begin
-        txd <= txd << 1;
-      end else begin
-        txd <= txd >> 1;
-      end
+      txd <= txd >> 1;
     end else begin
       txd <= txd;
     end
@@ -154,11 +149,7 @@ always_comb begin
       o_wready = 0;
       baud_ct_en = 1;
       bit_ct_en = 1;
-      if (ENDIAN == "big") begin
-        o_txs = txd[DLEN-1];
-      end else begin
-        o_txs = txd[0];
-      end
+      o_txs = txd[0];
 
       if (baud_ct_done && bit_ct_done) begin
         if (PARITY) begin

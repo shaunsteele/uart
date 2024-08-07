@@ -31,10 +31,10 @@ async def write_test(dut, data):
     await baud_test(dut, 0)
 
     # data bits
-    mask = (2 ** dut.DLEN.value) >> 1
+    mask = 0x01
     for _ in range(int(dut.DLEN.value)):
-        await baud_test(dut, (d & mask) >> 7)
-        d <<= 1
+        await baud_test(dut, d & mask)
+        d >>= 1
 
     # parity bit
     if (dut.PARITY.value):
