@@ -36,10 +36,6 @@ async def write_test(dut, data):
         await baud_test(dut, d & mask)
         d >>= 1
 
-    # parity bit
-    if (dut.PARITY.value):
-        await baud_test(dut, bool(bin(data).count('1') % 2))
-
     # stop bit
     await baud_test(dut, 1)
 

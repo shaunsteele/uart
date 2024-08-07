@@ -5,8 +5,7 @@
 module uart_tx # (
   parameter int BAUD = 921600,
   parameter int CLKF = 100000000,
-  parameter int DLEN = 8,
-  parameter int PARITY = 0
+  parameter int DLEN = 8
 )(
   input var                     clk,
   input var                     rstn,
@@ -106,12 +105,11 @@ end
 
 /* State Machine */
 // States
-typedef enum logic [4:0] {
-  TX_READY  = 5'b00001,
-  TX_START  = 5'b00010,
-  TX_DATA   = 5'b00100,
-  TX_STOP   = 5'b01000,
-  TX_PARITY = 5'b10000
+typedef enum logic [3:0] {
+  TX_READY  = 4'b0001,
+  TX_START  = 4'b0010,
+  TX_DATA   = 4'b0100,
+  TX_STOP   = 4'b1000
 } state_e;
 state_e curr_state;
 state_e next_state;
@@ -152,23 +150,6 @@ always_comb begin
       o_txs = txd[0];
 
       if (baud_ct_done && bit_ct_done) begin
-        if (PARITY) begin
-          next_state = TX_PARITY;
-        end else begin
-          next_state = TX_STOP;
-        end
-      end else begin
-        next_state = curr_state;
-      end
-    end
-
-    TX_PARITY: begin
-      o_wready = 0;
-      baud_ct_en = 1;
-      bit_ct_en = 0;
-      o_txs = parity_bit;
-
-      if (baud_ct_done) begin
         next_state = TX_STOP;
       end else begin
         next_state = curr_state;

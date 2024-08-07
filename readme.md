@@ -13,7 +13,7 @@ Modules:
     - rx fifo buffer written from
 
 uart_tx.sv
-- supports 8 bit data, parity, and any baud depending on clock speed
+- supports 8 bit data, and any baud depending on clock speed
 - functions:
   - baud counter
   - bit counter
