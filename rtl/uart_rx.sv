@@ -12,8 +12,9 @@ module uart_rx # (
 
   input var                     i_rxs,
 
-  output var logic              o_rvalid,
-  output var logic  [DLEN-1:0]  o_rdata
+  output var logic              o_tvalid,
+  input var                     i_tready,
+  output var logic  [DLEN-1:0]  o_tdata
 );
 
 
@@ -99,28 +100,33 @@ logic rdata_en;
 
 always_ff @(posedge clk) begin
   if (rdata_en) begin
-    o_rdata <= rxd;
+    o_tdata <= rxd;
   end else begin
-    o_rdata <= o_rdata;
+    o_tdata <= o_tdata;
   end
 end
 
 always_ff @(posedge clk) begin
   if (!rstn) begin
-    o_rvalid <= 0;
+    o_tvalid <= 0;
   end else begin
-    o_rvalid <= rdata_en;
+    if (o_tvalid) begin
+      o_tvalid <= ~i_tready;
+    end else begin
+      o_tvalid <= rdata_en;
+    end
   end
 end
 
 
 /* State Machine */
 // States
-typedef enum logic [3:0] {
-  RX_IDLE   = 4'b0001,
-  RX_START  = 4'b0010,
-  RX_DATA   = 4'b0100,
-  RX_STOP   = 4'b1000
+typedef enum logic [4:0] {
+  RX_IDLE   = 5'b00001,
+  RX_START  = 5'b00010,
+  RX_DATA   = 5'b00100,
+  RX_STOP   = 5'b01000,
+  RX_OUT    = 5'b10000
 } rx_state_e;
 
 rx_state_e curr_state;
@@ -176,12 +182,26 @@ always_comb begin
       baud_limit_half = 0;
       bit_ct_en = 0;
       rxd_en = 0;
+      rdata_en = 0;
 
       if (i_rxs && baud_ct_done) begin
-        rdata_en = 1;
-        next_state = RX_IDLE;
+        next_state = RX_OUT;
       end else begin
         rdata_en = 0;
+        next_state = curr_state;
+      end
+    end
+
+    RX_OUT: begin
+      baud_ct_en = 1;
+      baud_limit_half = 0;
+      bit_ct_en = 0;
+      rxd_en = 0;
+      rdata_en = 1;
+      
+      if (o_tvalid && i_tready) begin
+        next_state = RX_IDLE;
+      end else begin
         next_state = curr_state;
       end
     end

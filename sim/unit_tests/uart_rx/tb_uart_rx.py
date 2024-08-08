@@ -7,7 +7,7 @@ from cocotb.triggers import ClockCycles, FallingEdge, RisingEdge
 
 async def drive(dut, data):
     d = data
-    baud = int((dut.CLKF.value / dut.BAUD.value))
+    baud = int(dut.CLKF.value / dut.BAUD.value)
 
     await FallingEdge(dut.clk)
     dut.i_rxs.value = 0
@@ -23,6 +23,9 @@ async def drive(dut, data):
     dut.i_rxs.value = 1
 
     await ClockCycles(dut.clk, baud)
+    await FallingEdge(dut.clk)
+    assert dut.o_tvalid.value
+    assert dut.o_tdata.value == data
 
 
 @cocotb.test()
@@ -33,6 +36,7 @@ async def tb_uart_rx(dut):
 
     dut.rstn.value = 0
     dut.i_rxs.value = 1
+    dut.i_tready.value = 0
 
     cocotb.start_soon(Clock(dut.clk, 10, "ns").start())
 
@@ -42,8 +46,16 @@ async def tb_uart_rx(dut):
 
     await RisingEdge(dut.clk)
     await FallingEdge(dut.clk)
-    assert dut.o_rvalid.value == 0
+    assert dut.o_tvalid.value == 0
 
     await drive(dut, 0x55)
+    # await RisingEdge(dut.clk)
+    await ClockCycles(dut.clk, 10)
+    await FallingEdge(dut.clk)
+    dut.i_tready.value = 1
+
+    await drive(dut, 0x00)
+    await drive(dut, 0xFF)
+    await drive(dut, 0xAA)
 
     await ClockCycles(dut.clk, 10)
