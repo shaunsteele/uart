@@ -110,9 +110,10 @@ typedef enum logic [3:0] {
   TX_START  = 4'b0010,
   TX_DATA   = 4'b0100,
   TX_STOP   = 4'b1000
-} state_e;
-state_e curr_state;
-state_e next_state;
+} tx_state_e;
+
+tx_state_e curr_state;
+tx_state_e next_state;
 
 // Next State Logic
 always_comb begin
