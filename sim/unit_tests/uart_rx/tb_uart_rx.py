@@ -2,23 +2,27 @@
 
 import cocotb
 from cocotb.clock import Clock
-from cocotb.triggers import ClockCycles, FallingEdge, RisingEdge, Timer
+from cocotb.triggers import ClockCycles, FallingEdge, RisingEdge
 
 
 async def drive(dut, data):
     d = data
+    baud = int((dut.CLKF.value / dut.BAUD.value))
 
+    await FallingEdge(dut.clk)
     dut.i_rxs.value = 0
 
     for _ in range(dut.DLEN.value):
-        await Timer(1 / dut.BAUD.value, "sec")
+        await ClockCycles(dut.clk, baud)
+        await FallingEdge(dut.clk)
         dut.i_rxs.value = d & 0x01
         d >>= 1
 
-    await Timer(1 / dut.BAUD.value, "sec")
+    await ClockCycles(dut.clk, baud)
+    await FallingEdge(dut.clk)
     dut.i_rxs.value = 1
 
-    await Timer(1 / dut.BAUD.value, "sec")
+    await ClockCycles(dut.clk, baud)
 
 
 @cocotb.test()

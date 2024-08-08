@@ -24,16 +24,7 @@ localparam int BaudLen = $clog2(BaudLimit);
 logic [BaudLen-1:0] baud_ct;
 logic               baud_limit_half;
 logic               baud_ct_done;
-
-always_comb begin
-  if (baud_limit_half) begin
-    baud_ct_done = baud_ct >= BaudLimit / 2;
-  end else begin
-    baud_ct_done = baud_ct >= BaudLimit;
-  end
-end
-
-logic baud_ct_en;
+logic               baud_ct_en;
 
 always_ff @(posedge clk) begin
   if (!rstn) begin
@@ -43,7 +34,7 @@ always_ff @(posedge clk) begin
       if (!baud_ct_done) begin
         baud_ct <= baud_ct + 1;
       end else begin
-        baud_ct <= baud_ct;
+        baud_ct <= 0;
       end
     end else begin
       baud_ct <= 0;
@@ -51,16 +42,19 @@ always_ff @(posedge clk) begin
   end
 end
 
+always_comb begin
+  if (baud_limit_half) begin
+    baud_ct_done = baud_ct == (BaudLimit / 2);
+  end else begin
+    baud_ct_done = baud_ct == BaudLimit;
+  end
+end
+
 
 /* Bit Counter */
 logic             bit_ct_done;
 logic [DLEN-1:0]  bit_ct;
-
-always_comb begin
-  bit_ct_done = &bit_ct;
-end
-
-logic bit_ct_en;
+logic             bit_ct_en;
 
 always_ff @(posedge clk) begin
   if (!rstn) begin
@@ -76,6 +70,10 @@ always_ff @(posedge clk) begin
       bit_ct <= 0;
     end
   end
+end
+
+always_comb begin
+  bit_ct_done = &bit_ct;
 end
 
 
@@ -117,28 +115,22 @@ end
 
 
 /* State Machine */
+// States
 typedef enum logic [3:0] {
   RX_IDLE   = 4'b0001,
   RX_START  = 4'b0010,
   RX_DATA   = 4'b0100,
   RX_STOP   = 4'b1000
-} state_e;
+} rx_state_e;
 
-state_e curr_state;
-state_e next_state;
+rx_state_e curr_state;
+rx_state_e next_state;
 
-always_ff @(posedge clk) begin
-  if (!rstn) begin
-    curr_state <= RX_IDLE;
-  end else begin
-    curr_state <= next_state;
-  end
-end
-
+// Next State Logic
 always_comb begin
-  unique case (RX_IDLE)
+  unique case (curr_state)
     RX_IDLE: begin
-      baud_ct_en = 1;
+      baud_ct_en = 0;
       baud_limit_half = 0;
       bit_ct_en = 0;
       rxd_en = 0;
@@ -158,7 +150,7 @@ always_comb begin
       rxd_en = 0;
       rdata_en = 0;
 
-      if (baud_ct_done) begin
+      if (!i_rxs && baud_ct_done) begin
         next_state = RX_DATA;
       end else begin
         next_state = curr_state;
@@ -204,7 +196,16 @@ always_comb begin
       next_state = RX_IDLE;
     end
   endcase
-end 
+end
+
+// Current State Register
+always_ff @(posedge clk) begin
+  if (!rstn) begin
+    curr_state <= RX_IDLE;
+  end else begin
+    curr_state <= next_state;
+  end
+end
 
 
 endmodule
