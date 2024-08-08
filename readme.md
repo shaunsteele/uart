@@ -23,7 +23,7 @@ uart_tx.sv
 
 uart_rx.sv
 - axi stream slave interface
-- supports 8 bit data, and any baud depending on clock speed
+- supports 8 bit data, and any baud depending on clock speed (up to half clock speed)
 - functions:
   - baud counter
   - bit counter
