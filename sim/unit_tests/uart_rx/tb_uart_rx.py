@@ -23,6 +23,7 @@ async def drive(dut, data):
     dut.i_rxs.value = 1
 
     await ClockCycles(dut.clk, baud)
+    await RisingEdge(dut.clk)
     await FallingEdge(dut.clk)
     assert dut.o_tvalid.value
     assert dut.o_tdata.value == data
@@ -36,7 +37,7 @@ async def tb_uart_rx(dut):
 
     dut.rstn.value = 0
     dut.i_rxs.value = 1
-    dut.i_tready.value = 0
+    dut.i_tready.value = 1
 
     cocotb.start_soon(Clock(dut.clk, 10, "ns").start())
 
@@ -49,11 +50,6 @@ async def tb_uart_rx(dut):
     assert dut.o_tvalid.value == 0
 
     await drive(dut, 0x55)
-    # await RisingEdge(dut.clk)
-    await ClockCycles(dut.clk, 10)
-    await FallingEdge(dut.clk)
-    dut.i_tready.value = 1
-
     await drive(dut, 0x00)
     await drive(dut, 0xFF)
     await drive(dut, 0xAA)

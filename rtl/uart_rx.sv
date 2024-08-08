@@ -3,7 +3,8 @@
 `default_nettype none
 
 module uart_rx # (
-  parameter int BAUD = 25000000,
+  // parameter int BAUD = 921600,
+  parameter int BAUD = 50000000,
   parameter int CLKF = 100000000,
   parameter int DLEN = 8
 )(

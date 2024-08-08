@@ -13,12 +13,21 @@ Modules:
     - rx fifo buffer written from
 
 uart_tx.sv
+- axi stream slave interface
+- supports 8 bit data, and any baud depending on clock speed (up to half clock speed)
+- functions:
+  - baud counter
+  - bit counter
+  - shift register
+  - state machine
+
+uart_rx.sv
+- axi stream slave interface
 - supports 8 bit data, and any baud depending on clock speed
 - functions:
   - baud counter
   - bit counter
   - shift register
-  - parity calculator
   - state machine
 
 controller
