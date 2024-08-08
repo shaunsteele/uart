@@ -12,9 +12,9 @@ module uart_tx # (
 
   output var logic              o_txs,
 
-  input var                     i_wvalid,
-  output var logic              o_wready,
-  input var         [DLEN-1:0]  i_wdata
+  input var                     i_tvalid,
+  output var logic              o_tready,
+  input var         [DLEN-1:0]  i_tdata
 );
 
 
@@ -74,8 +74,8 @@ end
 logic [DLEN-1:0]  txd;
 
 always_ff @(posedge clk) begin
-  if (i_wvalid && o_wready) begin
-    txd <= i_wdata;
+  if (i_tvalid && o_tready) begin
+    txd <= i_tdata;
   end else begin
     if (bit_ct_en && baud_ct_done) begin
       txd <= txd >> 1;
@@ -95,8 +95,8 @@ always_comb begin
 end
 
 always_ff @(posedge clk) begin
-  if (i_wvalid && o_wready) begin
-    parity_buf <= i_wdata;
+  if (i_tvalid && o_tready) begin
+    parity_buf <= i_tdata;
   end else begin
     parity_buf <= parity_buf;
   end
@@ -119,12 +119,12 @@ tx_state_e next_state;
 always_comb begin
   unique case (curr_state)
     TX_READY: begin
-      o_wready = 1;
+      o_tready = 1;
       o_txs = 1;
       baud_ct_en = 0;
       bit_ct_en = 0;
 
-      if (i_wvalid) begin
+      if (i_tvalid) begin
         next_state = TX_START;
       end else begin
         next_state = curr_state;
@@ -132,7 +132,7 @@ always_comb begin
     end
 
     TX_START: begin
-      o_wready = 0;
+      o_tready = 0;
       baud_ct_en = 1;
       bit_ct_en = 0;
       o_txs = 0;
@@ -145,7 +145,7 @@ always_comb begin
     end
 
     TX_DATA: begin
-      o_wready = 0;
+      o_tready = 0;
       baud_ct_en = 1;
       bit_ct_en = 1;
       o_txs = txd[0];
@@ -158,7 +158,7 @@ always_comb begin
     end
 
     TX_STOP: begin
-      o_wready = 0;
+      o_tready = 0;
       baud_ct_en = 1;
       bit_ct_en = 0;
       o_txs = 1;
@@ -172,7 +172,7 @@ always_comb begin
 
     default: begin
       if (rstn) $error("Illegal State: 0x%0h", curr_state);
-      o_wready = 0;
+      o_tready = 0;
       baud_ct_en = 0;
       bit_ct_en = 0;
       o_txs = 1;

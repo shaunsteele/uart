@@ -10,7 +10,7 @@ async def baud_test(dut, expected_bit):
     ct = 0
     while (ct <= ct_limit):
         assert dut.o_txs.value == expected_bit
-        assert dut.o_wready.value == 0
+        assert dut.o_tready.value == 0
         await RisingEdge(dut.clk)
         await FallingEdge(dut.clk)
         ct += 1
@@ -18,14 +18,14 @@ async def baud_test(dut, expected_bit):
 
 async def write_test(dut, data):
     d = data
-    assert dut.o_wready.value == 1
-    dut.i_wvalid.value = 1
-    dut.i_wdata.value = data
+    assert dut.o_tready.value == 1
+    dut.i_tvalid.value = 1
+    dut.i_tdata.value = data
 
     await RisingEdge(dut.clk)
     await FallingEdge(dut.clk)
-    dut.i_wvalid.value = 0
-    dut.i_wdata.value = 0
+    dut.i_tvalid.value = 0
+    dut.i_tdata.value = 0
 
     # start bit
     await baud_test(dut, 0)
@@ -47,8 +47,8 @@ async def tb_uart_tx(dut):
     cocotb.log.info(f"DLEN: {dut.DLEN.value}")
 
     dut.rstn.value = 0
-    dut.i_wvalid.value = 0
-    dut.i_wdata.value = 0
+    dut.i_tvalid.value = 0
+    dut.i_tdata.value = 0
 
     cocotb.start_soon(Clock(dut.clk, 10, "ns").start())
 
@@ -59,7 +59,7 @@ async def tb_uart_tx(dut):
     await RisingEdge(dut.clk)
     await FallingEdge(dut.clk)
     assert dut.o_txs.value
-    assert dut.o_wready.value
+    assert dut.o_tready.value
 
     await write_test(dut, 0x00)
     await write_test(dut, 0x7F)
