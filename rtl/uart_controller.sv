@@ -45,13 +45,12 @@ module uart_controller # (
   output var logic  [UART_DLEN-1:0] o_txb_tdata,
   // output var logic                  o_txb_wen,
   // output var logic  [UART_DLEN-1:0] o_txb_wdata,
-  input var                         i_txb_full,
   input var                         i_txb_overflow,
 
   // rx buffer interface
   input var                         i_rxb_tvalid,
   output var logic                  o_rxb_tready,
-  input var         [UART_DLEN-1:0] i_txb_tdata,
+  input var         [UART_DLEN-1:0] i_rxb_tdata,
   // output var logic                  o_rxb_ren,
   // input var         [UART_DLEN-1:0] i_rxb_rdata,
   input var                         i_rxb_empty,
@@ -61,111 +60,105 @@ module uart_controller # (
 
 /* Write Controller */
 // transmit buffer enable
-logic txb_load;
+logic b_en;
 logic aw_en;
 logic w_en;
 always_comb begin
-  txb_load = aw_en & w_en;
+  b_en = aw_en & w_en;
 end
 
-// write address channel ready
-logic [axi.SLEN-1:0]  txb_shift;
-logic awready;
-always_comb begin
-  o_axi_awready = ~aw_en | ~|txb_shift | ~i_txb_full;
-end
 
 // write data channel ready
 always_comb begin
-  o_axi_wready = ~w_en | ~|txb_shift | ~i_txb_full;
+  o_axi_wready = ~w_en | i_txb_tready;
 end
 
-// write address enable
-logic valid_awaddr;
-always_comb begin
-  valid_awaddr = i_axi_awaddr == UART_ADDR;
-end
-
+// write address enable latch
 always_ff @(posedge clk) begin
   if (!rstn) begin
     aw_en <= 0;
   end else begin
     if (aw_en) begin
-      aw_en <= ~txb_load;
+      aw_en <= ~b_en;
     end else begin
-      aw_en <= i_axi_awvalid & ~i_txb_full & valid_awaddr;
+      aw_en <= i_axi_awvalid;
     end
   end
 end
 
-// write data enable 
+// valid write address latch
+logic valid_awaddr;
+always_ff @(posedge clk) begin
+  if (!rstn) begin
+    valid_awaddr <= 0;
+  end else  begin
+    if (valid_awaddr) begin
+      valid_awaddr <= ~b_en;
+    end else  begin
+      valid_awaddr <= i_axi_awvalid & i_axi_awaddr == UART_ADDR;
+    end
+  end
+end
+
+// write address channel ready
+logic awready;
+always_ff @(posedge clk) begin
+  if (!rstn) begin
+    o_axi_awready <= 0;
+  end else begin
+    if (i_axi_awvalid | aw_en) begin
+      o_axi_awready <= 0;
+    end else begin
+      o_axi_awready <= i_txb_tready;
+    end
+  end
+end
+
+// write data enable latch
 always_ff @(posedge clk) begin
   if (!rstn) begin
     w_en <= 0;
   end else begin
     if (w_en) begin
-      w_en <= ~txb_load;
+      w_en <= ~b_en;
     end else begin
-      w_en <= i_axi_wvalid & ~i_txb_full;
+      w_en <= i_axi_wvalid;
     end
   end
 end
 
-// txb enable shifter counter
-//// todo: check strobe
+// valid write address latch
+logic valid_wdata;
 always_ff @(posedge clk) begin
   if (!rstn) begin
-    txb_shift <= 0;
-  end else begin
-    if (txb_load) begin
-      txb_shift <= i_axi_wstrb;
-    end else if (i_txb_full) begin
-      txb_shift <= txb_shift;
-    end else begin
-      txb_shift <= {1'b0, txb_shift[axi.SLEN-1:1]};
+    valid_wdata <= 0;
+  end else  begin
+    if (valid_wdata) begin
+      valid_wdata <= ~b_en;
+    end else  begin
+      valid_wdata <= i_axi_wvalid & i_axi_wstrb[0];
     end
   end
 end
 
-always_comb begin
-  o_txb_wen = |txb_shift & ~i_txb_full;
-end
-
-// txb data shifter
+// write data register
 always_ff @(posedge clk) begin
-  
+  if (i_axi_wvalid & i_txb_tready) begin
+    o_txb_tdata <= i_axi_wdata[UART_DLEN-1:0];
+  end else begin
+    o_txb_tdata <= o_txb_tdata;
+  end
 end
-//// todo: check if needed
-// logic [UART_DLEN-1:0]  txb_data;
-// always_ff @(posedge clk) begin
-//   if (o_txb_wen) begin
-//     txb_data <= i_axi_wdata;
-//   end else begin
-//     txb_data <= {txb_data[UART_DLEN-1:0], {(DLEN){1'b0}}};
-//   end
-// end
 
-// always_comb begin
-//   o_txb_wdata = txb_data[UART_DLEN-1:0];
-// end
-
-// detect illegal wstrb values
-//// todo: change to check if LSB is raised
-logic tx_err;
+// buffer write valid
 always_ff @(posedge clk) begin
   if (!rstn) begin
-    tx_err <= 0;
+    o_txb_tvalid <= 0;
   end else begin
-    if (tx_err) begin
-      tx_err <= axi.bvalid & axi.bready;
+    if (o_txb_tvalid) begin
+      o_txb_tvalid <= ~i_txb_tready;
     end else begin
-      if (o_txb_wen) begin
-        tx_err <= wstrb == 'h0 || wstrb == 'h1 || wstrb == 'h3 ||
-          wstrb == 'h7 || wstrb == 'hF || wstrb == 'h1F || wstrb == 'h3F ||
-          wstrb == 'h7F || wstrb == 'hFF;
-      end else begin
-        tx_err <= tx_err;
-      end
+      o_txb_tvalid <= b_en & valid_awaddr & valid_wdata;
     end
   end
 end
@@ -176,84 +169,104 @@ always_ff @(posedge clk) begin
     o_axi_bvalid <= 0;
   end else begin
     if (o_axi_bvalid) begin
-      o_axi_bvalid <= ~i_axi_bready | o_txb_wen;
+      o_axi_bvalid <= ~i_axi_bready;
     end else begin
-      o_axi_bvalid <= o_txb_wen;
+      if (b_en && (!valid_awaddr || !valid_wdata)) begin
+        o_axi_bvalid <= 1;
+      end else begin
+        o_axi_bvalid <= o_txb_tvalid & i_txb_tready;
+      end
     end
   end
 end
 
-assign axi.bresp = {tx_err, 1'b0}; // OKAY or SLVERR
+// errors:
+//  - illegal awaddr
+//  - illegal wstrb
+//  - overflow
+always_ff @(posedge clk) begin
+  if (!rstn) begin
+    o_axi_bresp <= 0;
+  end else begin
+    if (b_en && !valid_awaddr) begin
+      o_axi_bresp <= 2'b11; // DECERR
+    end else if (b_en && valid_awaddr && !valid_wdata) begin
+      o_axi_bresp <= 2'b10;
+    end else begin
+      o_axi_bresp <= 2'b0;
+    end
+  end
+end
 
 
 /* Read Controller */
 // rxb read
-logic valid_araddr;
-always_comb begin
-  valid_araddr = (i_axi_araddr == UART_ADDR) | (i_axi_araddr == UART_ADDR + 1);
-end
+// logic valid_araddr;
+// always_comb begin
+//   valid_araddr = (i_axi_araddr == UART_ADDR) | (i_axi_araddr == UART_ADDR + 1);
+// end
 
-always_comb begin
-  o_rxb_ren = i_axi_arvalid & (i_axi_araddr == UART_ADDR) & ~i_rxb_empty;
-end
+// always_comb begin
+//   o_rxb_ren = i_axi_arvalid & (i_axi_araddr == UART_ADDR) & ~i_rxb_empty;
+// end
 
-logic rxb_valid;
-always_ff @(posedge clk) begin
-  if (!rstn) begin
-    rxb_valid <= 0;
-  end else begin
-    rxb_valid <= o_rxb_ren;
-  end
-end
+// logic rxb_valid;
+// always_ff @(posedge clk) begin
+//   if (!rstn) begin
+//     rxb_valid <= 0;
+//   end else begin
+//     rxb_valid <= o_rxb_ren;
+//   end
+// end
 
-logic [axi.DLEN-1:0]  status;
-assign status = {
-  {(axi.DLEN-5){1'b0}},
-  i_rxb_overflow,
-  i_rxb_underflow,
-  i_rxb_empty,
-  i_txb_overflow,
-  i_txb_full
-};
+// logic [axi.DLEN-1:0]  status;
+// assign status = {
+//   {(axi.DLEN-5){1'b0}},
+//   i_rxb_overflow,
+//   i_rxb_underflow,
+//   i_rxb_empty,
+//   i_txb_overflow,
+//   i_txb_full
+// };
 
-always_ff @(posedge clk) begin
-  if (rxb_valid && i_axi_rready) begin
-    o_axi_rdata <= i_rxb_rdata;
-  end else if (rxb_valid && !i_axi_rready) begin
-    o_axi_rdata <= o_axi_rdata;
-  end else begin
-    o_axi_rdata <= status;
-  end
-end
+// always_ff @(posedge clk) begin
+//   if (rxb_valid && i_axi_rready) begin
+//     o_axi_rdata <= i_rxb_rdata;
+//   end else if (rxb_valid && !i_axi_rready) begin
+//     o_axi_rdata <= o_axi_rdata;
+//   end else begin
+//     o_axi_rdata <= status;
+//   end
+// end
 
-logic ar_en;
-always_comb begin
-  ar_en = i_axi_arvalid & o_axi_arready;
-end
+// logic ar_en;
+// always_comb begin
+//   ar_en = i_axi_arvalid & o_axi_arready;
+// end
 
-logic rxb_rvalid;
-always_ff @(posedge clk) begin
-  if (!rstn) begin
-    rxb_rvalid <= 0;
-  end else begin
-    rxb_rvalid <= i_axi_arvalid & (i_axi_araddr == UART_ADDR);
-  end
-end
+// logic rxb_rvalid;
+// always_ff @(posedge clk) begin
+//   if (!rstn) begin
+//     rxb_rvalid <= 0;
+//   end else begin
+//     rxb_rvalid <= i_axi_arvalid & (i_axi_araddr == UART_ADDR);
+//   end
+// end
 
-always_ff @(posedge clk) begin
-  if (!rstn) begin
-    o_axi_rvalid <= 0;
-  end else begin
-    if (o_axi_rvalid) begin
-      o_axi_rvalid <= ~i_axi_rready | (ar_en & (i_axi_araddr == UART_ADDR + 1));
-    end
-    o_axi_rvalid <= rxb_rvalid | (ar_en & (i_axi_araddr == UART_ADDR + 1));
-  end
-end
+// always_ff @(posedge clk) begin
+//   if (!rstn) begin
+//     o_axi_rvalid <= 0;
+//   end else begin
+//     if (o_axi_rvalid) begin
+//       o_axi_rvalid <= ~i_axi_rready | (ar_en & (i_axi_araddr == UART_ADDR + 1));
+//     end
+//     o_axi_rvalid <= rxb_rvalid | (ar_en & (i_axi_araddr == UART_ADDR + 1));
+//   end
+// end
 
-always_comb begin
-  o_axi_arready = ~rxb_rvalid;
-end
+// always_comb begin
+//   o_axi_arready = ~rxb_rvalid;
+// end
 
 
 endmodule
