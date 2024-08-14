@@ -59,15 +59,15 @@ async def write_b(dut, resp=0b00):
 
     ct = 0
     while (not (awdone and wdone)):
-        await FallingEdge(dut.clk)
+        await RisingEdge(dut.clk)
         if (dut.i_axi_awvalid.value and dut.o_axi_awready.value):
             awdone = 1
         if (dut.i_axi_wvalid.value and dut.o_axi_wready.value):
             wdone = 1
         ct += 1
-        # if (ct > 5):
-        #     cocotb.log.error(f"write_b timeout - awdone: {awdone} wdone: {wdone}")
-        #     quit(1)
+        if (ct > 5):
+            cocotb.log.error(f"write_b timeout - awdone: {awdone} wdone: {wdone}")
+            # quit(1)
 
     dut.i_axi_bready.value = 1
 
@@ -134,7 +134,7 @@ async def tb_uart_controller(dut):
     await write(dut, 1, 0x11, resp=0b11)
     await write(dut, 0, 0x22, strb=0, resp=0b10)
 
-    # delayed address transaction
+    # delayed write address channel transaction
     await write(dut, 0, 0x33, ad=1)
     await write(dut, 1, 0x44, ad=1, resp=0b11)
     await write(dut, 0, 0x55, ad=1, strb=0, resp=0b10)
@@ -142,7 +142,7 @@ async def tb_uart_controller(dut):
     await write(dut, 1, 0x77, ad=2, resp=0b11)
     await write(dut, 0, 0x88, ad=2, strb=0, resp=0b10)
 
-    # delayed address transaction
+    # delayed write data channel transaction
     await write(dut, 0, 0x99, wd=1)
     await write(dut, 1, 0xAA, wd=1, resp=0b11)
     await write(dut, 0, 0xBB, wd=1, strb=0, resp=0b10)

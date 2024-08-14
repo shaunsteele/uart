@@ -43,17 +43,12 @@ module uart_controller # (
   output var logic                  o_txb_tvalid,
   input var                         i_txb_tready,
   output var logic  [UART_DLEN-1:0] o_txb_tdata,
-  // output var logic                  o_txb_wen,
-  // output var logic  [UART_DLEN-1:0] o_txb_wdata,
   input var                         i_txb_overflow,
 
   // rx buffer interface
   input var                         i_rxb_tvalid,
   output var logic                  o_rxb_tready,
   input var         [UART_DLEN-1:0] i_rxb_tdata,
-  // output var logic                  o_rxb_ren,
-  // input var         [UART_DLEN-1:0] i_rxb_rdata,
-  input var                         i_rxb_empty,
   input var                         i_rxb_overflow,
   input var                         i_rxb_underflow
 );
@@ -65,12 +60,6 @@ logic aw_en;
 logic w_en;
 always_comb begin
   b_en = aw_en & w_en;
-end
-
-
-// write data channel ready
-always_comb begin
-  o_axi_wready = ~w_en | i_txb_tready;
 end
 
 // write address enable latch
@@ -94,23 +83,18 @@ always_ff @(posedge clk) begin
   end else  begin
     if (valid_awaddr) begin
       valid_awaddr <= ~b_en;
-    end else  begin
+    end else begin
       valid_awaddr <= i_axi_awvalid & i_axi_awaddr == UART_ADDR;
     end
   end
 end
 
 // write address channel ready
-logic awready;
 always_ff @(posedge clk) begin
   if (!rstn) begin
     o_axi_awready <= 0;
   end else begin
-    if (i_axi_awvalid | aw_en) begin
-      o_axi_awready <= 0;
-    end else begin
-      o_axi_awready <= i_txb_tready;
-    end
+    o_axi_awready <= ~(i_axi_awvalid ^ aw_en ^ o_txb_tvalid);
   end
 end
 
@@ -124,6 +108,15 @@ always_ff @(posedge clk) begin
     end else begin
       w_en <= i_axi_wvalid;
     end
+  end
+end
+
+// write data channel ready
+always_ff @(posedge clk) begin
+  if (!rstn) begin
+    o_axi_wready <= 0;
+  end else begin
+    o_axi_wready <= ~(i_axi_wvalid ^ w_en ^ o_txb_tvalid);
   end
 end
 
@@ -200,15 +193,34 @@ end
 
 
 /* Read Controller */
-// rxb read
-// logic valid_araddr;
-// always_comb begin
-//   valid_araddr = (i_axi_araddr == UART_ADDR) | (i_axi_araddr == UART_ADDR + 1);
-// end
+logic valid_araddr;
+always_ff @(posedge clk) begin
+  if (!rstn) begin
+    valid_araddr <= 0;
+  end else begin
+    if (valid_araddr) begin
+      valid_araddr <= ~r_en; ////
+    end else begin
+      valid_araddr <= i_axi_arvalid & (i_axi_araddr == UART_ADDR) | (i_axi_araddr == UART_ADDR + 1);
+    end
+  end
+end
 
-// always_comb begin
-//   o_rxb_ren = i_axi_arvalid & (i_axi_araddr == UART_ADDR) & ~i_rxb_empty;
-// end
+/*
+  - i_axi_arvalid high with UART_ADDR, UART_ADDR+1, or bad addr
+    - UART_ADDR + 1:
+      - o_axi_rdata gets status register
+    - UART_ADDR:
+      - if i_rxb_tvalid set:
+        - o_rxb_tready set
+        - o_axi_rdata gets i_rxb_tdata
+        - o_axi_rresp gets OKAY
+        - o_axi_rvalid set
+      - else i_rxb_tvalid 0:
+        - o_axi_rdata gets 0
+        - o_axi_rresp gets SLVERR
+        - o_axi_rvalid set
+*/
 
 // logic rxb_valid;
 // always_ff @(posedge clk) begin
