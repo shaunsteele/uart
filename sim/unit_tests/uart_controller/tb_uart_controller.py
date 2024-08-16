@@ -7,7 +7,6 @@
 #   - delay w
 # read tests:
 #   - read status
-#       - rxb underflow, rxb overflow, rxb tvalid, txb overflow, txb tready
 #   - read data
 #   - invalid address
 
@@ -69,7 +68,8 @@ async def write_b(dut, resp=0b00):
             wdone = 1
         ct += 1
         if (ct > 5):
-            cocotb.log.error(f"write_b timeout - awdone: {awdone} wdone: {wdone}")
+            cocotb.log.error(f"write_b timeout - \
+                             awdone: {awdone} wdone: {wdone}")
             # quit(1)
 
     dut.i_axi_bready.value = 1
@@ -153,13 +153,10 @@ async def read_status(dut, status):
     await RisingEdge(dut.clk)
 
 
-async def set_read(dut, data, rxb_of=0, rxb_uf=0, txb_of=0):
+async def set_read(dut, data):
     await FallingEdge(dut.clk)
     dut.i_rxb_tvalid.value = 1
     dut.i_rxb_tdata.value = data
-    dut.i_rxb_overflow.value = rxb_of
-    dut.i_rxb_underflow.value = rxb_uf
-    dut.i_txb_overflow.value = txb_of
 
     await RisingEdge(dut.clk)
 
@@ -235,8 +232,8 @@ async def invalid_araddr(dut):
 
 
 async def check_status(dut):
-    await set_read(dut, 0xFF, 1, 1, 1)
-    await read_status(dut, 0x72)
+    await set_read(dut, 0xFF)
+    await read_status(dut, 0x10)
 
 
 async def read_tests(dut):
@@ -265,11 +262,8 @@ async def tb_uart_controller(dut):
     dut.i_axi_araddr.value = 0xFF
     dut.i_axi_rready.value = 0
     dut.i_txb_tready.value = 0
-    dut.i_txb_overflow.value = 0
     dut.i_rxb_tvalid.value = 0
     dut.i_rxb_tdata.value = 0
-    dut.i_rxb_overflow.value = 0
-    dut.i_rxb_underflow.value = 0
 
     cocotb.start_soon(Clock(dut.clk, 10, "ns").start())
 

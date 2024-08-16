@@ -27,8 +27,9 @@ cdc_sync u_CDC (
 );
 
 // receiver
-logic             rx_rvalid;
-logic [DLEN-1:0]  rx_rdata;
+logic             rx_tvalid;
+logic             rxb_tready;
+logic [DLEN-1:0]  rx_tdata;
 uart_rx # (
   .BAUD (BAUD),
   .CLKF (CLKF),
@@ -37,77 +38,86 @@ uart_rx # (
   .clk      (clk),
   .rstn     (rstn),
   .i_rxs    (rxs),
-  .o_rvalid (rx_rvalid),
-  .o_rdata  (rx_rdata)
+  .o_tvalid (rx_tvalid),
+  .i_tready (rxb_tready),
+  .o_tdata  (rx_tdata)
 );
 
 // receiver buffer
-logic             ctl_rxb_ren;
-logic [DLEN-1:0]  rxb_rdata;
+logic             rxb_tvalid;
+logic             ctl_rxb_tready;
+logic [DLEN-1:0]  rxb_tdata;
 
-logic rxb_overflow;
-logic rxb_empty;
-logic rxb_underflow;
 fifo # (
   .ALEN   (2),
   .DLEN   (DLEN)
 ) u_RXB (
   .clk          (clk),
   .rstn         (rstn),
-  .i_wen        (rx_rvalid),
-  .i_wdata      (rx_rdata),
-  .o_wfull      (),
-  .o_woverflow  (rxb_overflow),
-  .i_ren        (ctl_rxb_ren),
-  .o_rdata      (rxb_rdata),
-  .o_rempty     (rxb_empty),
-  .o_runderflow (rxb_underflow)
+  .i_wr_tvalid  (rx_tvalid),
+  .o_wr_tready  (rxb_tready),
+  .i_wr_tdata   (rx_tdata),
+  .o_rd_tvalid  (rxb_tvalid),
+  .i_rd_tready  (ctl_rxb_tready),
+  .o_rd_tdata   (rxb_tdata)
 );
 
 // Controller
-logic             ctl_txb_wen;
-logic [DLEN-1:0]  ctl_txb_wdata;
-logic             txb_overflow;
+logic             ctl_txb_tvalid;
+logic             txb_tready;
+logic [DLEN-1:0]  ctl_txb_tdata;
 
 uart_controller # (
-  .DLEN (DLEN),
-  .UART_ADDR  (UART_ADDR),
-  .ENDIAN     (ENDIAN)
+  .AXI_ALEN   (axi.ALEN),
+  .AXI_DLEN   (axi.DLEN),
+  .AXI_SLEN   (axi.SLEN),
+  .UART_DLEN  (DLEN),
+  .UART_ADDR  (UART_ADDR)
 ) u_CTL (
   .clk              (clk),
   .rstn             (rstn),
-  .i_rxb_overflow   (rxb_overflow),
-  .o_rxb_ren        (ctl_rxb_ren),
-  .i_rxb_rdata      (rxb_rdata),
-  .i_rxb_empty      (rxb_empty),
-  .i_rxb_underflow  (rxb_underflow),
-  .o_txb_wen        (ctl_txb_wen),
-  .o_txb_wdata      (ctl_txb_wdata),
-  .i_txb_full       (txb_full),
-  .i_txb_overflow   (txb_overflow),
-  .axi              (axi)
+  .i_axi_awvalid    (axi.awvalid),
+  .o_axi_awready    (axi.awready),
+  .i_axi_awaddr     (axi.awaddr),
+  .i_axi_wvalid     (axi.wvalid),
+  .o_axi_wready     (axi.wready),
+  .i_axi_wdata      (axi.wdata),
+  .i_axi_wstrb      (axi.wstrb),
+  .o_axi_bvalid     (axi.bvalid),
+  .i_axi_bready     (axi.bready),
+  .o_axi_bresp      (axi.bresp),
+  .i_axi_arvalid    (axi.arvalid),
+  .o_axi_arready    (axi.arready),
+  .i_axi_araddr     (axi.araddr),
+  .o_axi_rvalid     (axi.rvalid),
+  .i_axi_rready     (axi.rready),
+  .o_axi_rdata      (axi.rdata),
+  .o_axi_rresp      (axi.rresp),
+  .o_txb_tvalid     (ctl_txb_tvalid),
+  .i_txb_tready     (txb_tready),
+  .o_txb_tdata      (ctl_txb_tdata),
+  .i_rxb_tvalid     (rxb_tvalid),
+  .o_rxb_tready     (ctl_rxb_tready),
+  .i_rxb_tdata      (rxb_tdata)
 );
 
 // Transmit Buffer
-logic             txb_full;
-logic             tx_wready;
-logic [DLEN-1:0]  txb_rdata;
-logic             txb_empty;
-logic             txb_underflow;
+logic             txb_tvalid;
+logic             tx_tready;
+logic [DLEN-1:0]  txb_tdata;
+
 fifo # (
-  .ALEN (128),
+  .ALEN (2),
   .DLEN (DLEN)
 ) u_TXB (
   .clk          (clk),
   .rstn         (rstn),
-  .i_wen        (ctl_txb_wen),
-  .i_wdata      (ctl_txb_wdata),
-  .o_wfull      (txb_full),
-  .o_woverflow  (txb_overflow),
-  .i_ren        (tx_wready & ~txb_empty),
-  .o_rdata      (txb_rdata),
-  .o_rempty     (txb_empty),
-  .o_runderflow (txb_underflow)
+  .i_wr_tvalid  (ctl_txb_tvalid),
+  .o_wr_tready  (txb_tready),
+  .i_wr_tdata   (ctl_txb_tdata),
+  .o_rd_tvalid  (txb_tvalid),
+  .i_rd_tready  (tx_tready),
+  .o_rd_tdata   (txb_tdata)
 );
 
 // Transmitter
@@ -119,9 +129,9 @@ uart_tx # (
   .clk      (clk),
   .rstn     (rstn),
   .o_txs    (o_tx),
-  .i_wvalid (~txb_empty),
-  .o_wready (tx_wready),
-  .i_wdata  (txb_rdata)
+  .i_tvalid (txb_tvalid),
+  .o_tready (tx_tready),
+  .i_tdata  (txb_tdata)
 );
 
 endmodule

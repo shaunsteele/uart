@@ -43,14 +43,11 @@ module uart_controller # (
   output var logic                  o_txb_tvalid,
   input var                         i_txb_tready,
   output var logic  [UART_DLEN-1:0] o_txb_tdata,
-  input var                         i_txb_overflow,
 
   // rx buffer interface
   input var                         i_rxb_tvalid,
   output var logic                  o_rxb_tready,
-  input var         [UART_DLEN-1:0] i_rxb_tdata,
-  input var                         i_rxb_overflow,
-  input var                         i_rxb_underflow
+  input var         [UART_DLEN-1:0] i_rxb_tdata
 );
 
 /* Write Controller */
@@ -221,12 +218,9 @@ end
 logic [AXI_DLEN-1:0]  status;
 assign status = {
   {(AXI_DLEN-8){1'b0}},
-  1'b0,
-  i_rxb_underflow,
-  i_rxb_overflow,
+  3'b0,
   i_rxb_tvalid,
-  2'b0,
-  i_txb_overflow,
+  3'b0,
   i_txb_tready
 };
 
