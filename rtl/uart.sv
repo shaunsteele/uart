@@ -7,7 +7,8 @@ module uart # (
   parameter int CLKF = 100000000,
   parameter int DLEN = 8,
   parameter int UART_ADDR = 0,
-  parameter int ENDIAN = "little"
+  parameter int RXB_ALEN = 2,
+  parameter int TXB_ALEN = 2
 )(
   input var         clk,
   input var         rstn,
@@ -49,7 +50,7 @@ logic             ctl_rxb_tready;
 logic [DLEN-1:0]  rxb_tdata;
 
 fifo # (
-  .ALEN   (2),
+  .ALEN   (RXB_ALEN),
   .DLEN   (DLEN)
 ) u_RXB (
   .clk          (clk),
@@ -107,7 +108,7 @@ logic             tx_tready;
 logic [DLEN-1:0]  txb_tdata;
 
 fifo # (
-  .ALEN (2),
+  .ALEN (TXB_ALEN),
   .DLEN (DLEN)
 ) u_TXB (
   .clk          (clk),
