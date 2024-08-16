@@ -9,8 +9,8 @@ module uart_controller # (
   parameter int UART_DLEN = 8,
   parameter int UART_ADDR = 32'h0
 )(
-  input var                     clk,
-  input var                     rstn,
+  input var                         clk,
+  input var                         rstn,
 
   // axi write address channel
   input var                         i_axi_awvalid,
