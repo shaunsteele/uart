@@ -184,7 +184,7 @@ always_ff @(posedge clk) begin
     if (b_en && !valid_awaddr) begin
       o_axi_bresp <= 2'b11; // DECERR
     end else if (b_en && valid_awaddr && !valid_wdata) begin
-      o_axi_bresp <= 2'b10;
+      o_axi_bresp <= 2'b10; // SLVERR
     end else begin
       o_axi_bresp <= 2'b0;
     end
@@ -193,92 +193,120 @@ end
 
 
 /* Read Controller */
-logic valid_araddr;
+// read buffer enable
+logic rxb_en;
+always_comb begin
+  rxb_en = i_axi_arvalid & (i_axi_araddr == UART_ADDR);
+end
+
 always_ff @(posedge clk) begin
   if (!rstn) begin
-    valid_araddr <= 0;
+    o_rxb_tready <= 0;
   end else begin
-    if (valid_araddr) begin
-      valid_araddr <= ~r_en; ////
+    if (o_rxb_tready) begin
+      o_rxb_tready <= ~i_axi_rready;
     end else begin
-      valid_araddr <= i_axi_arvalid & (i_axi_araddr == UART_ADDR) | (i_axi_araddr == UART_ADDR + 1);
+      o_rxb_tready <= rxb_en;
     end
   end
 end
 
-/*
-  - i_axi_arvalid high with UART_ADDR, UART_ADDR+1, or bad addr
-    - UART_ADDR + 1:
-      - o_axi_rdata gets status register
-    - UART_ADDR:
-      - if i_rxb_tvalid set:
-        - o_rxb_tready set
-        - o_axi_rdata gets i_rxb_tdata
-        - o_axi_rresp gets OKAY
-        - o_axi_rvalid set
-      - else i_rxb_tvalid 0:
-        - o_axi_rdata gets 0
-        - o_axi_rresp gets SLVERR
-        - o_axi_rvalid set
-*/
+// read status enable
+logic read_status;
+always_comb begin
+  read_status = i_axi_arvalid & (i_axi_araddr == UART_ADDR + 1);
+end
 
-// logic rxb_valid;
-// always_ff @(posedge clk) begin
-//   if (!rstn) begin
-//     rxb_valid <= 0;
-//   end else begin
-//     rxb_valid <= o_rxb_ren;
-//   end
-// end
+// status data
+logic [AXI_DLEN-1:0]  status;
+assign status = {
+  {(AXI_DLEN-8){1'b0}},
+  1'b0,
+  i_rxb_underflow,
+  i_rxb_overflow,
+  i_rxb_tvalid,
+  2'b0,
+  i_txb_overflow,
+  i_txb_tready
+};
 
-// logic [axi.DLEN-1:0]  status;
-// assign status = {
-//   {(axi.DLEN-5){1'b0}},
-//   i_rxb_overflow,
-//   i_rxb_underflow,
-//   i_rxb_empty,
-//   i_txb_overflow,
-//   i_txb_full
-// };
+logic rxb_flag;
+always_ff @(posedge clk) begin
+  if (!rstn) begin
+    rxb_flag <= 0;
+  end else begin
+    if (rxb_flag) begin
+      rxb_flag <= ~(o_axi_rvalid & i_axi_rready);
+    end else begin
+      rxb_flag <= rxb_en;
+    end
+  end
+end
 
-// always_ff @(posedge clk) begin
-//   if (rxb_valid && i_axi_rready) begin
-//     o_axi_rdata <= i_rxb_rdata;
-//   end else if (rxb_valid && !i_axi_rready) begin
-//     o_axi_rdata <= o_axi_rdata;
-//   end else begin
-//     o_axi_rdata <= status;
-//   end
-// end
+logic rstn_q;
+always_ff @(posedge clk) begin
+  rstn_q <= rstn;
+end
 
-// logic ar_en;
-// always_comb begin
-//   ar_en = i_axi_arvalid & o_axi_arready;
-// end
+always_ff @(posedge clk) begin
+  if (!rstn) begin
+    o_axi_arready <= 0;
+  end else begin
+    if (o_axi_arready) begin
+      o_axi_arready <= ~i_axi_arvalid;
+    end else begin
+      if (rstn && !rstn_q) begin
+        o_axi_arready <= 1;
+      end else begin
+        o_axi_arready <= o_axi_rvalid & i_axi_rready;
+      end
+    end
+  end
+end
 
-// logic rxb_rvalid;
-// always_ff @(posedge clk) begin
-//   if (!rstn) begin
-//     rxb_rvalid <= 0;
-//   end else begin
-//     rxb_rvalid <= i_axi_arvalid & (i_axi_araddr == UART_ADDR);
-//   end
-// end
+always_ff @(posedge clk) begin
+  if (!rstn) begin
+    o_axi_rvalid <= 0;
+  end else begin
+    if (o_axi_rvalid) begin
+      o_axi_rvalid <= ~i_axi_rready;
+    end else begin
+      if (rxb_flag) begin
+        o_axi_rvalid <= i_rxb_tvalid;
+      end else begin
+        o_axi_rvalid <= i_axi_arvalid & o_axi_arready;
+      end
+    end
+  end
+end
 
-// always_ff @(posedge clk) begin
-//   if (!rstn) begin
-//     o_axi_rvalid <= 0;
-//   end else begin
-//     if (o_axi_rvalid) begin
-//       o_axi_rvalid <= ~i_axi_rready | (ar_en & (i_axi_araddr == UART_ADDR + 1));
-//     end
-//     o_axi_rvalid <= rxb_rvalid | (ar_en & (i_axi_araddr == UART_ADDR + 1));
-//   end
-// end
+// read data buffer
+always_ff @(posedge clk) begin
+  if (!rstn) begin
+    o_axi_rdata <= {(AXI_DLEN){1'b1}};
+  end else begin
+    if (rxb_en || o_rxb_tready) begin
+      o_axi_rdata <= {{(AXI_DLEN-UART_DLEN){1'b0}}, i_rxb_tdata};
+    end else if (read_status) begin
+      o_axi_rdata <= status;
+    end else begin
+      o_axi_rdata <= o_axi_rdata;
+    end
+  end
+end
 
-// always_comb begin
-//   o_axi_arready = ~rxb_rvalid;
-// end
-
+always_ff @(posedge clk) begin
+  if (!rstn) begin
+    o_axi_rresp <= 2'b00;
+  end else begin
+    if (rxb_en || read_status) begin
+      o_axi_rresp <= 2'b00;
+    end else if (i_axi_arvalid && (!rxb_en || !read_status)) begin
+      o_axi_rresp <= 2'b11; // DECERR
+    end else begin
+      o_axi_rresp <= o_axi_rresp;
+    end
+  end
+end
 
 endmodule
