@@ -43,6 +43,8 @@ COMP_ARGS += -L uvm
 
 ELAB_ARGS += -L uvm
 
+SIM_ARGS += -testplusarg UVM_VERBOSITY=UVM_LOW
+
 DEFINES := 
 
 TOP = tb_uart_top
@@ -61,7 +63,7 @@ waves:
 	gtkwave dump.vcd
 
 $(TOP)_snapshot.wdb: .elab.timestamp
-	xsim $(TOP)_snapshot -tclbatch $(TCL_DIR)/xsim_cfg.tcl
+	xsim $(TOP)_snapshot -tclbatch $(TCL_DIR)/xsim_cfg.tcl $(SIM_ARGS)
 
 .elab.timestamp: .comp.timestamp
 	xelab -debug all $(ELAB_ARGS) -top $(TOP) -snapshot $(TOP)_snapshot

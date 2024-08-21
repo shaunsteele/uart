@@ -22,7 +22,11 @@ endfunction
 virtual task run_phase(uvm_phase phase);
   uart_seq_item req;
   forever begin
+    `uvm_info(get_full_name(), "run_phase - getting item", UVM_LOW)
     seq_item_port.get_next_item(req);
+    `uvm_info(get_full_name(), "run_phase - got item", UVM_LOW)
+    // req.print();
+    `uvm_info(get_type_name(), $sformatf("%s", req.convert2string()), UVM_LOW)
 
     fork
       if (req.write) begin
@@ -37,7 +41,9 @@ virtual task run_phase(uvm_phase phase);
       end
     join
 
+    `uvm_info(get_full_name(), "run_phase - DUT driven", UVM_LOW)
     seq_item_port.item_done();
+    `uvm_info(get_full_name(), "run_phase - item done", UVM_LOW)
   end
 endtask
 

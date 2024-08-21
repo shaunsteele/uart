@@ -19,7 +19,8 @@ virtual function void build_phase(uvm_phase phase);
 endfunction
 
 virtual function void write(uart_seq_item data);
-  data.print();
+  `uvm_info(get_full_name(), "write - printing data", UVM_LOW)
+  `uvm_info(get_type_name(), $sformatf("%s", data.convert2string()), UVM_LOW)
 endfunction
 
 virtual task run_phase(uvm_phase phase);

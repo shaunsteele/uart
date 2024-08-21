@@ -20,10 +20,18 @@ virtual function void build_phase(uvm_phase phase);
   seq = uart_sequence::type_id::create("seq", this);
 endfunction
 
-task run();
+task run_phase(uvm_phase phase);
+  phase.raise_objection(this);
+  `uvm_info(get_full_name(), "run_phase", UVM_LOW)
   #100;
-  #1000;
+  `uvm_info(get_full_name(), "starting sequencer", UVM_LOW)
+  seq.start(env.agt.sqr);
+  `uvm_info(get_full_name(), "sequencer started", UVM_LOW)
+  #10000;
+  `uvm_info(get_full_name(), "global_stop_request()", UVM_LOW)
   global_stop_request();
+  `uvm_info(get_full_name(), "finished run_phase", UVM_LOW)
+  phase.drop_objection(this);
 endtask
 
 endclass
