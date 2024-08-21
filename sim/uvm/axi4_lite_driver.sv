@@ -21,6 +21,19 @@ endfunction
 
 virtual task run_phase(uvm_phase phase);
   uart_seq_item req;
+
+  axi.awvalid <= 0;
+  axi.awaddr <= 0;
+  axi.awprot <= 0;
+  axi.wvalid <= 0;
+  axi.wdata <= 0;
+  axi.wstrb <= 0;
+  axi.bready <= 0;
+  axi.arvalid <= 0;
+  axi.araddr <= 0;
+  axi.arprot <= 0;
+  axi.rready <= 0;
+
   forever begin
     `uvm_info(get_full_name(), "run_phase - getting item", UVM_LOW)
     seq_item_port.get_next_item(req);
