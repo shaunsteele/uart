@@ -12,6 +12,15 @@ FIFO_DIR := $(IP_DIR)/fifo/rtl
 
 SRCS += $(SIM_DIR)/tb_uart_pkg.sv
 
+SRCS += $(SIM_DIR)/uart_seq_item.sv
+SRCS += $(SIM_DIR)/uart_sequence.sv
+SRCS += $(SIM_DIR)/axi4_lite_driver.sv
+SRCS += $(SIM_DIR)/axi4_lite_monitor.sv
+SRCS += $(SIM_DIR)/axi4_lite_agent.sv
+SRCS += $(SIM_DIR)/uart_scoreboard.sv
+SRCS += $(SIM_DIR)/uart_env.sv
+SRCS += $(SIM_DIR)/uart_test.sv
+
 SRCS += $(ITF_DIR)/axi4_lite_if.sv
 
 SRCS += $(FIFO_DIR)/sp_ram.sv

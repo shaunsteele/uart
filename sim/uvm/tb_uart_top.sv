@@ -29,14 +29,16 @@ axi4_lite_if axi(clk, rstn);
 parameter int BAUD = 9600;
 parameter int CLKF = 100000000;
 
+logic sd;
+
 uart # (
   .BAUD (BAUD),
   .CLKF (CLKF)
 ) u_DUT (
   .clk    (clk),
   .rstn   (rstn),
-  .o_tx   (),
-  .i_rx   (1'b0),
+  .o_tx   (sd),
+  .i_rx   (sd),
   .axi    (axi)
 );
 

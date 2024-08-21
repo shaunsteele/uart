@@ -25,7 +25,7 @@ rand bit [SLEN-1:0] wstrb;
 
 // write response channel
 rand int            bdelay;
-bit [1:0]      bresp;
+bit [1:0]           bresp;
 
 // read address channel
 rand int            ardelay;
@@ -35,8 +35,8 @@ rand bit [2:0]      arprot;
 
 // read data channel
 rand int            rdelay;
-bit [DLEN-1:0] rdata;
-bit [1:0]      rresp;
+bit [DLEN-1:0]      rdata;
+bit [1:0]           rresp;
 
 // constructor
 function new(string name="uart_seq_item");
