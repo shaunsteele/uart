@@ -43,7 +43,7 @@ uart # (
 );
 
 initial begin
-  uvm_config_db #(virtual axi4_lite_if)::set(null, "uvm_test_top", "axi", axi);
+  uvm_config_db #(virtual axi4_lite_if)::set(uvm_root::get(), "*", "axi", axi);
   run_test("uart_test");
 end
 
