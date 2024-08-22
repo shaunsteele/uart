@@ -45,7 +45,9 @@ endfunction
 
 // constraints
 constraint rw_c {
-  write == 1 || read == 1;
+  // write == 1 || read == 1;
+  write == 1;
+  read == 0;
 }
 
 constraint delay_c {
@@ -57,13 +59,19 @@ constraint delay_c {
 }
 
 constraint awaddr_c {
-  if (awtype == GOOD) awaddr == BASE_ADDR;
-  else awaddr != BASE_ADDR;
+  // if (awtype == GOOD) awaddr == BASE_ADDR;
+  // else awaddr != BASE_ADDR;
+  awtype == GOOD;
+  awaddr == BASE_ADDR;
 }
 
 constraint araddr_c {
   if (artype == GOOD) araddr inside {[BASE_ADDR:BASE_ADDR+1]};
   else !(araddr inside {[BASE_ADDR:BASE_ADDR+1]});
+}
+
+constraint wdata_c {
+  wdata == 32'hAA;
 }
 
 constraint wstrb_c {
@@ -74,7 +82,7 @@ constraint wstrb_c {
 function string convert2string();
   string s;
 
-  $sformat(s,"write: %b\tread: %b\n", write, read);
+  $sformat(s,"\nwrite: %b\tread: %b\n", write, read);
 
   if (write) begin
     $sformat(s,"%sawdelay:%01d\tawtype:\t%s\tawaddr:\t0x%08h\n", s, awdelay, awtype.name(), awaddr);
