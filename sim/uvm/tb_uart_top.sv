@@ -24,7 +24,7 @@ initial begin
   rstn = 1;
 end
 
-axi4_lite_if axi(clk, rstn);
+axi4_lite_if axi(.aclk(clk), .aresetn(rstn));
 
 parameter int BAUD = 9600;
 parameter int CLKF = 100000000;
