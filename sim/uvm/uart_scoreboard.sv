@@ -27,6 +27,10 @@ virtual task run_phase(uvm_phase phase);
   // comparison
 endtask
 
+virtual function void check_phase(uvm_phase phase);
+  super.check_phase(phase);
+endfunction
+
 endclass
 
 `endif
