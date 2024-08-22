@@ -27,7 +27,7 @@ module uart_controller # (
   output var logic                  o_axi_bvalid,
   input var                         i_axi_bready,
   output var logic  [1:0]           o_axi_bresp,
-  
+
   // axi read address channel
   input var                         i_axi_arvalid,
   output var logic                  o_axi_arready,
@@ -38,7 +38,7 @@ module uart_controller # (
   input var                         i_axi_rready,
   output var logic  [AXI_DLEN-1:0]  o_axi_rdata,
   output var logic  [1:0]           o_axi_rresp,
-  
+
   // tx buffer interface
   output var logic                  o_txb_tvalid,
   input var                         i_txb_tready,

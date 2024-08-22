@@ -199,7 +199,7 @@ always_comb begin
       bit_ct_en = 0;
       rxd_en = 0;
       rdata_en = 1;
-      
+
       if (o_tvalid && i_tready) begin
         next_state = RX_IDLE;
       end else begin

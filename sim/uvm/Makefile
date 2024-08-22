@@ -73,6 +73,12 @@ $(TOP)_snapshot.wdb: .elab.timestamp
 	xvlog $(COMP_ARGS) $(DEFINES) --sv $(SRCS)
 	touch .comp.timestamp
 
+LINT_RULES += --rules=-line-length
+
+.PHONY: lint
+lint:
+	verible-verilog-lint $(SRCS) $(LINT_RULES)
+
 .PHONY: clean
 clean:
 	rm -rf *.jou *.log *.pb *.wdb xsim.dir

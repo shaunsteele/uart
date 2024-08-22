@@ -59,7 +59,6 @@ modport S (
   input rready, output rvalid, rdata, rresp
 );
 
-// 
 modport M_DRV (
   input aclk, aresetn,
   output awvalid, awaddr, awprot, input awready,
