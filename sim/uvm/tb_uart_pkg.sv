@@ -8,12 +8,12 @@ package tb_uart_pkg;
 
 import uvm_pkg::*;
 
-parameter ALEN = 32;
-parameter DLEN = 32;
-parameter SLEN = DLEN / 8;
+parameter int ALEN = 32;
+parameter int DLEN = 32;
+parameter int SLEN = DLEN / 8;
 
-parameter BASE_ADDR = 32'h0000_1000;
-parameter TIMEOUT = 5;
+parameter bit [ALEN-1:0] BASE_ADDR = 32'h0000_1000;
+parameter int TIMEOUT = 5;
 
 typedef enum bit {
   GOOD,
