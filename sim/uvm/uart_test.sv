@@ -26,7 +26,6 @@ task run_phase(uvm_phase phase);
   #100;
   `uvm_info(get_full_name(), "starting sequencer", UVM_LOW)
   seq.start(env.agt.sqr);
-  `uvm_info(get_full_name(), "sequencer started", UVM_LOW)
   #10000;
   `uvm_info(get_full_name(), "global_stop_request()", UVM_LOW)
   global_stop_request();
