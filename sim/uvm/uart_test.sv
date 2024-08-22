@@ -30,7 +30,6 @@ task run_phase(uvm_phase phase);
   #10000;
   `uvm_info(get_full_name(), "global_stop_request()", UVM_LOW)
   global_stop_request();
-  `uvm_info(get_full_name(), "finished run_phase", UVM_LOW)
   phase.drop_objection(this);
 endtask
 
