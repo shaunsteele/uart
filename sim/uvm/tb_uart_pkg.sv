@@ -8,6 +8,9 @@ package tb_uart_pkg;
 
 import uvm_pkg::*;
 
+parameter int CLKF = 100000000;
+parameter int BAUD = 50000000;
+
 parameter int ALEN = 32;
 parameter int DLEN = 32;
 parameter int SLEN = DLEN / 8;

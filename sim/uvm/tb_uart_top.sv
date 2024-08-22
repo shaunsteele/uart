@@ -12,7 +12,6 @@ import tb_uart_pkg::*;
 bit clk;
 initial begin
   clk = 0;
-  #5;
   forever #5 clk = ~clk;
 end
 
@@ -26,14 +25,15 @@ end
 
 axi4_lite_if axi(.aclk(clk), .aresetn(rstn));
 
-parameter int BAUD = 9600;
-parameter int CLKF = 100000000;
-
 logic sd;
 
 uart # (
-  .BAUD (BAUD),
-  .CLKF (CLKF)
+  .BAUD       (tb_uart_pkg::BAUD),
+  .CLKF       (tb_uart_pkg::CLKF),
+  .DLEN       (8),
+  .UART_ADDR  (tb_uart_pkg::BASE_ADDR),
+  .RXB_ALEN   (2),
+  .TXB_ALEN   (2)
 ) u_DUT (
   .clk    (clk),
   .rstn   (rstn),
