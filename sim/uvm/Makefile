@@ -29,8 +29,6 @@ SRCS += $(FIFO_DIR)/wr_ptr.sv
 SRCS += $(FIFO_DIR)/fifo.sv
 
 SRCS += $(RTL_DIR)/cdc_sync.sv
-SRCS += $(RTL_DIR)/elastic_buffer.sv
-SRCS += $(RTL_DIR)/skid_buffer.sv
 SRCS += $(RTL_DIR)/uart_rx.sv
 SRCS += $(RTL_DIR)/uart_tx.sv
 SRCS += $(RTL_DIR)/uart_controller.sv
