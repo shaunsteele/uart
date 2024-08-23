@@ -1,0 +1,3 @@
+[submodule "ip/fifo"]
+	path = ip/fifo
+	url = https://github.com/shaunsteele/fifo
