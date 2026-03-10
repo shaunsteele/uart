@@ -1,43 +1,18 @@
-AXI UART Transceiver
+# Universal Asynchronous Receiver Transmitter (UART) Core
 
-Description:
-Simply writes 1 byte to transmitter, and reads 1 byte from receiver.
+## Overview
+AXI-Lite controlled UART core intended for logging information and debug messages to a serial terminal in other projects. Based on the UART design from the book FPGA Prototyping by Systemverilog Examples by Pong P. Chu.
 
-Modules:
-- uart_tx: axi stream uart transmitter
-- uart_rx: axi stream uart receiver
-- rx_fifo: axi stream receiver buffer fifo
-- uart_controller: axi lite controller
-  - writes directly to uart tx
-  - reads from rx fifo buffer
-    - rx fifo buffer written from
+## Features
+- 32-bit AXI-Lite interface
+- Programmable baud rate
+- 8-bit word
+- No parity bit
 
-uart_tx.sv
-- axi stream slave interface
-- supports 8 bit data, and any baud depending on clock speed (up to half clock speed)
-- functions:
-  - baud counter
-  - bit counter
-  - shift register
-  - state machine
-
-uart_rx.sv
-- axi stream slave interface
-- supports 8 bit data, and any baud depending on clock speed (up to half clock speed)
-- functions:
-  - baud counter
-  - bit counter
-  - shift register
-  - state machine
-
-controller
-- write address channel
-  - aw_en from valid awvalid and txb not full and correct awaddr
-  - aw_en falls once load shifter started
-  - awready from txb not full and txb_wen not busy
-- write data channel
-  - wen from wvalid and txb not full
-  - wen falls once load shifter started
-  - txb shifter loaded with wstrb
-  - txb data loaded with wdata
-  - txb
+## Register Map
+|  Offset | Access | Name               | Bit Fields|
+|---------|--------|--------------------|-----------|
+| 0       | R      | Read Data / Status | 9: transmit full, 8: receive empty, 7-0: receive data |
+| 1       | W      | Baud Rate Divisor  | 10-0: 11-bit divisor value |
+| 2       | W      | Write Data         | 7-0: 8-bit transmit data |
+| 3       | W      | Read Data Removal  | Don't care|
