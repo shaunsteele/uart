@@ -89,6 +89,7 @@ always_comb begin
     next_bit_ct = bit_ct;
     next_data_sr = data_sr;
     rx_done = 1'b0;
+    next_state = curr_state;
 
     // next state logic
     unique case (curr_state)

@@ -19,15 +19,16 @@ module uart_core # (
     input   var logic   [DVSR_WIDTH-1:0]    i_divisor,
 
     // transmitter control
-    input   var logic                       i_we,
-    input   var logic   [DATA_WIDTH-1:0]    i_wdata,
-    output  var logic                       o_wfull,
+    input   var logic                       i_tx_we,
+    input   var logic   [DATA_WIDTH-1:0]    i_tx_wdata,
+    output  var logic                       o_tx_wfull,
 
     // receiver control
-    input   var logic                       i_re,
-    output  var logic   [DATA_WIDTH-1:0]    o_rdata,
-    output  var logic                       o_rempty
+    input   var logic                       i_rx_re,
+    output  var logic   [DATA_WIDTH-1:0]    o_rx_rdata,
+    output  var logic                       o_rx_rempty
 );
+
 
 // baud rate generator
 logic bg_baud_tick;
@@ -43,7 +44,7 @@ baud_gen # (
 
 // receiver modules
 logic                   rx_done;
-logic [DATA_WIDTH-1:0]  uart_rdata;
+logic [DATA_WIDTH-1:0]  rx_rdata;
 
 fifo #(
     .DATA_WIDTH (8),
@@ -51,9 +52,9 @@ fifo #(
 ) u_RXBUF (
     .clk        (clk),
     .rst_n      (rst_n),
-    .i_re       (re),
-    .o_rdata    (o_rdata),
-    .o_rempty   (o_rempty),
+    .i_re       (i_rx_re),
+    .o_rdata    (o_rx_rdata),
+    .o_rempty   (o_rx_rempty),
     .i_we       (rx_done),
     .i_wdata    (rx_rdata),
     .o_wfull    ()
@@ -68,7 +69,7 @@ uart_rx # (
     .i_rx           (i_rx),
     .i_baud_tick    (bg_baud_tick),
     .o_done         (rx_done),
-    .o_data         (uart_rdata)
+    .o_data         (rx_rdata)
 );
 
 
@@ -86,9 +87,9 @@ fifo #(
     .i_re       (tx_done),
     .o_rdata    (tx_wdata),
     .o_rempty   (txbuf_empty),
-    .i_we       (i_we),
-    .i_wdata    (i_wdata),
-    .o_wfull    (o_wfull)
+    .i_we       (i_tx_we),
+    .i_wdata    (i_tx_wdata),
+    .o_wfull    (o_tx_wfull)
 );
 
 uart_tx # (
