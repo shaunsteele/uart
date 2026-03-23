@@ -93,6 +93,10 @@ always_comb begin
 
     // next state logic
     unique case (curr_state)
+        default: begin
+            next_state = RX_IDLE;
+        end
+
         RX_IDLE: begin
             if (i_rx == 1'b0) begin // UART start bit
                 next_sample_ct = 0;

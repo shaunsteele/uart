@@ -102,6 +102,9 @@ always_comb begin
 
     // next state logic
     unique case (curr_state)
+        default: begin
+            next_state = TX_IDLE;
+        end
         TX_IDLE: begin
             next_txs = 1'b1;
             if (i_start) begin
